@@ -1,0 +1,99 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2761
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 <!DOCTYPE html>\
+<html lang="en">\
+<head>\
+    <meta charset="UTF-8">\
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">\
+    <title>Emotion Trajectory Drawing</title>\
+</head>\
+<body>\
+    <div style="text-align: center;">\
+        <canvas id="emotionCanvas" width="800" height="400" style="border:1px solid #000;"></canvas>\
+        <br>\
+        <button id="clearCanvas" type="button">Clear</button>\
+        <button id="submitCanvas" type="button">Submit</button>\
+    </div>\
+    <script>\
+        const canvas = document.getElementById("emotionCanvas");\
+        const ctx = canvas.getContext("2d");\
+        const timeScale = 20; // Time in minutes\
+        const intensityScale = 10; // Intensity scale\
+        let isDrawing = false;\
+        let dataPoints = [];\
+\
+        // Draw axes\
+        function drawAxes() \{\
+            ctx.clearRect(0, 0, canvas.width, canvas.height);\
+\
+            // X-axis (time)\
+            ctx.beginPath();\
+            ctx.moveTo(50, canvas.height - 50);\
+            ctx.lineTo(canvas.width - 50, canvas.height - 50);\
+            ctx.stroke();\
+\
+            // Y-axis (intensity)\
+            ctx.beginPath();\
+            ctx.moveTo(50, canvas.height - 50);\
+            ctx.lineTo(50, 50);\
+            ctx.stroke();\
+\
+            ctx.font = "16px Arial";\
+            ctx.fillText("Time (minutes)", canvas.width / 2, canvas.height - 20);\
+            ctx.save();\
+\
+            ctx.translate(20, canvas.height / 2);\
+            ctx.rotate(-Math.PI / 2);\
+            ctx.fillText("Emotion Intensity", 0, 0);\
+            ctx.restore();\
+        \}\
+\
+        drawAxes();\
+\
+        // Event listeners for drawing\
+        canvas.addEventListener("mousedown", (e) => \{\
+            isDrawing = true;\
+            ctx.beginPath();\
+            ctx.moveTo(e.offsetX, e.offsetY);\
+        \});\
+\
+        canvas.addEventListener("mousemove", (e) => \{\
+            if (isDrawing) \{\
+                ctx.lineTo(e.offsetX, e.offsetY);\
+                ctx.stroke();\
+\
+                // Record data points\
+                let time = ((e.offsetX - 50) / (canvas.width - 100)) * timeScale;\
+                let intensity = ((canvas.height - 50 - e.offsetY) / (canvas.height - 100)) * intensityScale;\
+                if (time >= 0 && intensity >= 0) \{\
+                    dataPoints.push(\{ time: time.toFixed(2), intensity: intensity.toFixed(2) \});\
+                \}\
+            \}\
+        \});\
+\
+        canvas.addEventListener("mouseup", () => \{\
+            isDrawing = false;\
+        \});\
+\
+        // Clear the canvas\
+        document.getElementById("clearCanvas").addEventListener("click", () => \{\
+            drawAxes();\
+            dataPoints = [];\
+        \});\
+\
+        // Submit the data\
+        document.getElementById("submitCanvas").addEventListener("click", () => \{\
+            const dataString = JSON.stringify(dataPoints);\
+            alert(`Data submitted: $\{dataString\}`);\
+            // Save data to server or pass to Qualtrics\
+            window.parent.postMessage(dataString, "*");\
+        \});\
+    </script>\
+</body>\
+</html>\
+}
