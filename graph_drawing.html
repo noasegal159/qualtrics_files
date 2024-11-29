@@ -61,4 +61,74 @@
             const xInterval = 10; // Interval for time
             const xStep = (canvas.width - 2 * padding) / (timeScale / xInterval);
             for (let i = 0; i <= timeScale; i += xInterval) {
-                const x = padding + (i / timeScale) * (canvas.width - 2 * padd
+                const x = padding + (i / timeScale) * (canvas.width - 2 * padding);
+                ctx.beginPath();
+                ctx.moveTo(x, canvas.height - padding); // Bottom of axis
+                ctx.lineTo(x, canvas.height - padding + 5); // Small tick mark
+                ctx.stroke();
+                ctx.fillText(i, x - 10, canvas.height - padding + 20); // Label
+            }
+
+            // Add Y-axis ticks and labels (0-9 scale)
+            const yStep = (canvas.height - 2 * padding) / intensityScale;
+            for (let i = 0; i <= intensityScale; i++) {
+                const y = canvas.height - padding - (i / intensityScale) * (canvas.height - 2 * padding);
+                ctx.beginPath();
+                ctx.moveTo(padding, y); // Left of axis
+                ctx.lineTo(padding - 5, y); // Small tick mark
+                ctx.stroke();
+                ctx.fillText(i, padding - 25, y + 5); // Label
+            }
+        }
+
+        // Initialize the canvas with axes
+        drawAxes();
+
+        // Event listeners for drawing
+        canvas.addEventListener("mousedown", (e) => {
+            isDrawing = true; // Start drawing
+            ctx.beginPath();
+            ctx.moveTo(e.offsetX, e.offsetY);
+        });
+
+        canvas.addEventListener("mousemove", (e) => {
+            if (isDrawing) {
+                ctx.lineTo(e.offsetX, e.offsetY);
+                ctx.stroke();
+
+                // Record normalized time and intensity
+                let time = ((e.offsetX - 50) / (canvas.width - 100)) * timeScale; // Normalize X
+                let intensity = ((canvas.height - 50 - e.offsetY) / (canvas.height - 100)) * intensityScale; // Normalize Y
+                if (time >= 0 && time <= timeScale && intensity >= 0 && intensity <= intensityScale) {
+                    dataPoints.push({ time: time.toFixed(2), intensity: intensity.toFixed(2) });
+                }
+            }
+        });
+
+        canvas.addEventListener("mouseup", () => {
+            isDrawing = false; // Stop drawing
+        });
+
+        canvas.addEventListener("mouseleave", () => {
+            isDrawing = false; // Stop drawing if mouse leaves canvas
+        });
+
+        // Clear the canvas and reset data points
+        document.getElementById("clearCanvas").addEventListener("click", () => {
+            drawAxes(); // Redraw axes
+            dataPoints = []; // Reset points
+        });
+
+        // Submit the trajectory data
+        document.getElementById("submitCanvas").addEventListener("click", () => {
+            const dataString = JSON.stringify(dataPoints);
+            alert(`Trajectory Submitted: ${dataString}`); // Display the data
+
+            // Send data to parent window (if embedded in iframe)
+            if (window.parent) {
+                window.parent.postMessage(dataString, "*");
+            }
+        });
+    </script>
+</body>
+</html>
