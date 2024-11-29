@@ -21,28 +21,31 @@
         const ctx = canvas.getContext("2d");
 
         // Define scales for time (X-axis) and intensity (Y-axis)
-        const timeScale = 20; // Time in minutes
-        const intensityScale = 10; // Intensity range
+        const timeScale = 60; // Time in minutes
+        const intensityScale = 9; // Intensity range
 
         // Variables for drawing
         let isDrawing = false; // Tracks whether the user is currently drawing
         let dataPoints = []; // Array to store time-intensity points
 
-        // Function to draw axes on the canvas
+        // Function to draw axes and labels on the canvas
         function drawAxes() {
             // Clear the canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+            // Axis padding
+            const padding = 50;
+
             // Draw X-axis (Time)
             ctx.beginPath();
-            ctx.moveTo(50, canvas.height - 50); // Start at bottom-left corner
-            ctx.lineTo(canvas.width - 50, canvas.height - 50); // Horizontal line
+            ctx.moveTo(padding, canvas.height - padding); // Start at bottom-left corner
+            ctx.lineTo(canvas.width - padding, canvas.height - padding); // Horizontal line
             ctx.stroke();
 
             // Draw Y-axis (Intensity)
             ctx.beginPath();
-            ctx.moveTo(50, canvas.height - 50); // Start at bottom-left corner
-            ctx.lineTo(50, 50); // Vertical line
+            ctx.moveTo(padding, canvas.height - padding); // Start at bottom-left corner
+            ctx.lineTo(padding, padding); // Vertical line
             ctx.stroke();
 
             // Add axis labels
@@ -53,56 +56,9 @@
             ctx.rotate(-Math.PI / 2); // Rotate for vertical text
             ctx.fillText("Emotion Intensity", 0, 0); // Y-axis label
             ctx.restore();
-        }
 
-        // Initialize the canvas with axes
-        drawAxes();
-
-        // Event listeners for drawing
-        canvas.addEventListener("mousedown", (e) => {
-            isDrawing = true; // Start drawing
-            ctx.beginPath();
-            ctx.moveTo(e.offsetX, e.offsetY);
-        });
-
-        canvas.addEventListener("mousemove", (e) => {
-            if (isDrawing) {
-                ctx.lineTo(e.offsetX, e.offsetY);
-                ctx.stroke();
-
-                // Record normalized time and intensity
-                let time = ((e.offsetX - 50) / (canvas.width - 100)) * timeScale; // Normalize X
-                let intensity = ((canvas.height - 50 - e.offsetY) / (canvas.height - 100)) * intensityScale; // Normalize Y
-                if (time >= 0 && time <= timeScale && intensity >= 0 && intensity <= intensityScale) {
-                    dataPoints.push({ time: time.toFixed(2), intensity: intensity.toFixed(2) });
-                }
-            }
-        });
-
-        canvas.addEventListener("mouseup", () => {
-            isDrawing = false; // Stop drawing
-        });
-
-        canvas.addEventListener("mouseleave", () => {
-            isDrawing = false; // Stop drawing if mouse leaves canvas
-        });
-
-        // Clear the canvas and reset data points
-        document.getElementById("clearCanvas").addEventListener("click", () => {
-            drawAxes(); // Redraw axes
-            dataPoints = []; // Reset points
-        });
-
-        // Submit the trajectory data
-        document.getElementById("submitCanvas").addEventListener("click", () => {
-            const dataString = JSON.stringify(dataPoints);
-            alert(`Trajectory Submitted: ${dataString}`); // Display the data
-
-            // Send data to parent window (if embedded in iframe)
-            if (window.parent) {
-                window.parent.postMessage(dataString, "*");
-            }
-        });
-    </script>
-</body>
-</html>
+            // Add X-axis ticks and labels (10-minute intervals)
+            const xInterval = 10; // Interval for time
+            const xStep = (canvas.width - 2 * padding) / (timeScale / xInterval);
+            for (let i = 0; i <= timeScale; i += xInterval) {
+                const x = padding + (i / timeScale) * (canvas.width - 2 * padd
