@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Emotion Trajectory Drawing</title>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js"></script>
 </head>
 <body>
     <div style="text-align: center;">
@@ -16,6 +18,20 @@
     </div>
 
     <script>
+        // Firebase configuration (replace with your Firebase project details)
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        // Initialize Firebase
+        const app = firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
         // Set up canvas and context
         const canvas = document.getElementById("emotionCanvas");
         const ctx = canvas.getContext("2d");
@@ -33,19 +49,16 @@
             // Clear the canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Axis padding
-            const padding = 50;
-
             // Draw X-axis (Time)
             ctx.beginPath();
-            ctx.moveTo(padding, canvas.height - padding); // Start at bottom-left corner
-            ctx.lineTo(canvas.width - padding, canvas.height - padding); // Horizontal line
+            ctx.moveTo(50, canvas.height - 50); // Start at bottom-left corner
+            ctx.lineTo(canvas.width - 50, canvas.height - 50); // Horizontal line
             ctx.stroke();
 
             // Draw Y-axis (Intensity)
             ctx.beginPath();
-            ctx.moveTo(padding, canvas.height - padding); // Start at bottom-left corner
-            ctx.lineTo(padding, padding); // Vertical line
+            ctx.moveTo(50, canvas.height - 50); // Start at bottom-left corner
+            ctx.lineTo(50, 50); // Vertical line
             ctx.stroke();
 
             // Add axis labels
@@ -59,25 +72,25 @@
 
             // Add X-axis ticks and labels (10-minute intervals)
             const xInterval = 10; // Interval for time
-            const xStep = (canvas.width - 2 * padding) / (timeScale / xInterval);
+            const xStep = (canvas.width - 100) / (timeScale / xInterval);
             for (let i = 0; i <= timeScale; i += xInterval) {
-                const x = padding + (i / timeScale) * (canvas.width - 2 * padding);
+                const x = 50 + (i / timeScale) * (canvas.width - 100);
                 ctx.beginPath();
-                ctx.moveTo(x, canvas.height - padding); // Bottom of axis
-                ctx.lineTo(x, canvas.height - padding + 5); // Small tick mark
+                ctx.moveTo(x, canvas.height - 50); // Bottom of axis
+                ctx.lineTo(x, canvas.height - 45); // Small tick mark
                 ctx.stroke();
-                ctx.fillText(i, x - 10, canvas.height - padding + 20); // Label
+                ctx.fillText(i, x - 10, canvas.height - 30); // Label
             }
 
             // Add Y-axis ticks and labels (0-9 scale)
-            const yStep = (canvas.height - 2 * padding) / intensityScale;
+            const yStep = (canvas.height - 100) / intensityScale;
             for (let i = 0; i <= intensityScale; i++) {
-                const y = canvas.height - padding - (i / intensityScale) * (canvas.height - 2 * padding);
+                const y = canvas.height - 50 - (i / intensityScale) * (canvas.height - 100);
                 ctx.beginPath();
-                ctx.moveTo(padding, y); // Left of axis
-                ctx.lineTo(padding - 5, y); // Small tick mark
+                ctx.moveTo(50, y); // Left of axis
+                ctx.lineTo(45, y); // Small tick mark
                 ctx.stroke();
-                ctx.fillText(i, padding - 25, y + 5); // Label
+                ctx.fillText(i, 30, y + 5); // Label
             }
         }
 
@@ -119,15 +132,24 @@
             dataPoints = []; // Reset points
         });
 
-        // Submit the trajectory data
+        // Submit the trajectory data to Firebase
         document.getElementById("submitCanvas").addEventListener("click", () => {
             const dataString = JSON.stringify(dataPoints);
-            alert(`Trajectory Submitted: ${dataString}`); // Display the data
 
-            // Send data to parent window (if embedded in iframe)
-            if (window.parent) {
-                window.parent.postMessage(dataString, "*");
-            }
+            // Save to Firebase
+            db.collection("emotion_trajectories").add({
+                trajectory: dataPoints,
+                timestamp: new Date()
+            })
+            .then(() => {
+                alert("Your data has been saved!");
+                dataPoints = []; // Clear the points after submission
+                drawAxes(); // Reset canvas
+            })
+            .catch((error) => {
+                console.error("Error saving data: ", error);
+                alert("There was an error saving your data. Please try again.");
+            });
         });
     </script>
 </body>
