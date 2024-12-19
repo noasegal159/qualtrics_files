@@ -4,47 +4,100 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Emotion Trajectory Tool</title>
+</head>
+<body>
+    <div style="text-align: center;">
+        <canvas id="emotionCanvas" width="850" height="500" style="border:1px solid #000; margin-bottom: 20px;"></canvas>
+        <br>
+        <button id="clearCanvas" type="button">Clear</button>
+        <button id="submitCanvas" type="button">Submit</button>
+    </div>
+
     <script>
         let canvas, ctx, dataPoints = [], isDrawing = false;
 
         function initCanvas() {
             canvas = document.getElementById("emotionCanvas");
             ctx = canvas.getContext("2d");
+
+            drawAxes();
+
             canvas.addEventListener("mousedown", startDrawing);
             canvas.addEventListener("mousemove", draw);
             canvas.addEventListener("mouseup", stopDrawing);
             canvas.addEventListener("mouseout", stopDrawing);
-            drawAxes();
+
+            document.getElementById("clearCanvas").addEventListener("click", clearCanvas);
+            document.getElementById("submitCanvas").addEventListener("click", submitData);
         }
 
         function drawAxes() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Y-axis
             ctx.beginPath();
             ctx.moveTo(50, 10);
-            ctx.lineTo(50, 390);
-            ctx.lineTo(790, 390);
+            ctx.lineTo(50, 450);
+
+            // Draw X-axis
+            ctx.lineTo(830, 450);
             ctx.stroke();
+
+            // Add X-axis labels (every 20 minutes up to 120)
+            ctx.textAlign = "center";
+            ctx.font = "14px Arial";
             for (let i = 0; i <= 6; i++) {
-                ctx.fillText(i * 10, 50 + i * 120, 410);
+                ctx.fillText(i * 20, 50 + i * 130, 465); // Adjusted for more visibility
             }
+
+            // Add Y-axis labels (0-9 scale)
+            ctx.textAlign = "right";
             for (let i = 0; i <= 9; i++) {
-                ctx.fillText(i, 30, 390 - i * 40);
+                ctx.fillText(i, 45, 450 - i * 44); // Slightly offset for alignment
             }
+
+            // Add axis titles
+            ctx.font = "16px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText("Time (minutes)", 440, 485); // Moved below the canvas for better visibility
+
+            ctx.save();
+            ctx.translate(15, 230); // Move to the center-left of the canvas
+            ctx.rotate(-Math.PI / 2); // Rotate 90 degrees counter-clockwise
+            ctx.fillText("Intensity", 0, 0); // Y-axis label
+            ctx.restore();
+        }
+
+        function getMousePosition(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.max(0, Math.min((e.clientX - rect.left - 50) * (120 / 780), 120)); // Maps X to 0-120
+            const y = Math.max(0, Math.min(9 - ((e.clientY - rect.top - 10) * (9 / 440)), 9)); // Maps Y to 0-9
+            return { x, y };
         }
 
         function startDrawing(e) {
             isDrawing = true;
             const { x, y } = getMousePosition(e);
-            dataPoints.push({ time: x, intensity: y });
-            ctx.beginPath();
-            ctx.moveTo(x, y);
+
+            if (dataPoints.length === 0) {
+                // Start the drawing at (0, y) where x=0
+                dataPoints.push({ time: 0, intensity: y });
+                ctx.beginPath();
+                ctx.moveTo(50, 450 - (y * (440 / 9))); // Move to the start position at x=0
+            } else {
+                dataPoints.push({ time: x, intensity: y });
+                ctx.beginPath();
+                ctx.moveTo(50 + (x * (780 / 120)), 450 - (y * (440 / 9))); // Move to the current mouse position
+            }
         }
 
         function draw(e) {
             if (!isDrawing) return;
             const { x, y } = getMousePosition(e);
+            const scaledX = 50 + (x * (780 / 120)); // Scale X to fit canvas dimensions
+            const scaledY = 450 - (y * (440 / 9)); // Scale Y to fit canvas dimensions (invert Y)
             dataPoints.push({ time: x, intensity: y });
-            ctx.lineTo(x, y);
+            ctx.lineTo(scaledX, scaledY);
             ctx.stroke();
         }
 
@@ -54,20 +107,24 @@
             ctx.closePath();
         }
 
-        function getMousePosition(e) {
-            const rect = canvas.getBoundingClientRect();
-            return {
-                x: Math.round((e.clientX - rect.left) * (60 / 740)),
-                y: Math.round((rect.bottom - e.clientY) * (9 / 380))
-            };
+        function clearCanvas() {
+            drawAxes();
+            dataPoints.length = 0;
         }
 
-        document.getElementById("submitCanvas").addEventListener("click", () => {
+        function submitData() {
+            if (dataPoints.length === 0) {
+                alert("Please draw a trajectory before submitting.");
+                return;
+            }
+
             const trajectoryData = {
                 participantID: prompt("Enter your Participant ID:", "001"),
                 time: dataPoints.map((p) => p.time),
                 intensity: dataPoints.map((p) => p.intensity)
             };
+
+            console.log("Submitting data:", trajectoryData);
 
             const apiGatewayUrl = "https://tnzaxwxu6a.execute-api.us-east-2.amazonaws.com/submitData";
 
@@ -81,29 +138,16 @@
                 .then((response) => response.json())
                 .then((data) => {
                     alert("Data submitted successfully!");
-                    drawAxes();
-                    dataPoints.length = 0;
+                    console.log("Response from server:", data);
+                    clearCanvas();
                 })
                 .catch((error) => {
-                    console.error("Error:", error);
+                    console.error("Error submitting data:", error);
                     alert("There was an error submitting your data.");
                 });
-        });
-
-        document.getElementById("clearCanvas").addEventListener("click", () => {
-            drawAxes();
-            dataPoints.length = 0;
-        });
+        }
 
         window.onload = initCanvas;
     </script>
-</head>
-<body>
-    <div style="text-align: center;">
-        <canvas id="emotionCanvas" width="800" height="400" style="border:1px solid #000;"></canvas>
-        <br>
-        <button id="clearCanvas" type="button">Clear</button>
-        <button id="submitCanvas" type="button">Submit</button>
-    </div>
 </body>
 </html>
