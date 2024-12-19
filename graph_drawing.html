@@ -1,159 +1,33 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Emotion Trajectory Drawing</title>
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js"></script>
-</head>
-<body>
-    <div style="text-align: center;">
-        <!-- Canvas for Drawing -->
-        <canvas id="emotionCanvas" width="800" height="400" style="border:1px solid #000;"></canvas>
-        <br>
-        <!-- Clear and Submit Buttons -->
-        <button id="clearCanvas" type="button">Clear</button>
-        <button id="submitCanvas" type="button">Submit</button>
-    </div>
+document.getElementById("submitCanvas").addEventListener("click", () => {
+    // Prepare the data
+    const trajectoryData = {
+        participantID: prompt("Enter your Participant ID:", "001"), // Ask for participant ID
+        time: dataPoints.map((p) => p.time), // Extract time from drawn data
+        intensity: dataPoints.map((p) => p.intensity) // Extract intensity from drawn data
+    };
 
-    <script>
-        // Firebase configuration (replace these values with your Firebase project details)
-        const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_PROJECT_ID.appspot.com",
-            messagingSenderId: "SENDER_ID",
-            appId: "APP_ID"
-        };
+    // Replace with your actual API Gateway Invoke URL
+    const apiGatewayUrl = "https://tnzaxwxu6a.execute-api.us-east-2.amazonaws.com/submitData";
 
-        // Initialize Firebase
-        const app = firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
+    // Send data to the backend via POST request
+    fetch(apiGatewayUrl, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(trajectoryData)
+    })
+        .then((response) => response.json())
+        .then((data) => {
+            alert("Data submitted successfully!");
+            console.log("Response from server:", data);
 
-        // Set up canvas and context
-        const canvas = document.getElementById("emotionCanvas");
-        const ctx = canvas.getContext("2d");
-
-        // Define scales for time (X-axis) and intensity (Y-axis)
-        const timeScale = 60; // Time in minutes
-        const intensityScale = 9; // Intensity range
-
-        // Variables for drawing
-        let isDrawing = false; // Tracks whether the user is currently drawing
-        let dataPoints = []; // Array to store time-intensity points
-
-        // Function to draw axes and labels on the canvas
-        function drawAxes() {
-            // Clear the canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Axis padding
-            const padding = 50;
-
-            // Draw X-axis (Time)
-            ctx.beginPath();
-            ctx.moveTo(padding, canvas.height - padding); // Start at bottom-left corner
-            ctx.lineTo(canvas.width - padding, canvas.height - padding); // Horizontal line
-            ctx.stroke();
-
-            // Draw Y-axis (Intensity)
-            ctx.beginPath();
-            ctx.moveTo(padding, canvas.height - padding); // Start at bottom-left corner
-            ctx.lineTo(padding, padding); // Vertical line
-            ctx.stroke();
-
-            // Add axis labels
-            ctx.font = "16px Arial";
-            ctx.fillText("Time (minutes)", canvas.width / 2, canvas.height - 20); // X-axis label
-            ctx.save();
-            ctx.translate(20, canvas.height / 2); // Move to Y-axis center
-            ctx.rotate(-Math.PI / 2); // Rotate for vertical text
-            ctx.fillText("Emotion Intensity", 0, 0); // Y-axis label
-            ctx.restore();
-
-            // Add X-axis ticks and labels (10-minute intervals)
-            const xInterval = 10; // Interval for time
-            const xStep = (canvas.width - 2 * padding) / (timeScale / xInterval);
-            for (let i = 0; i <= timeScale; i += xInterval) {
-                const x = padding + (i / timeScale) * (canvas.width - 2 * padding);
-                ctx.beginPath();
-                ctx.moveTo(x, canvas.height - padding); // Bottom of axis
-                ctx.lineTo(x, canvas.height - padding + 5); // Small tick mark
-                ctx.stroke();
-                ctx.fillText(i, x - 10, canvas.height - padding + 20); // Label
-            }
-
-            // Add Y-axis ticks and labels (0-9 scale)
-            const yStep = (canvas.height - 2 * padding) / intensityScale;
-            for (let i = 0; i <= intensityScale; i++) {
-                const y = canvas.height - padding - (i / intensityScale) * (canvas.height - 2 * padding);
-                ctx.beginPath();
-                ctx.moveTo(padding, y); // Left of axis
-                ctx.lineTo(padding - 5, y); // Small tick mark
-                ctx.stroke();
-                ctx.fillText(i, padding - 25, y + 5); // Label
-            }
-        }
-
-        // Initialize the canvas with axes
-        drawAxes();
-
-        // Event listeners for drawing
-        canvas.addEventListener("mousedown", (e) => {
-            isDrawing = true; // Start drawing
-            ctx.beginPath();
-            ctx.moveTo(e.offsetX, e.offsetY);
+            // Optionally clear the canvas after submission
+            drawAxes();
+            dataPoints.length = 0; // Clear the collected points
+        })
+        .catch((error) => {
+            console.error("Error:", error);
+            alert("There was an error submitting your data.");
         });
-
-        canvas.addEventListener("mousemove", (e) => {
-            if (isDrawing) {
-                ctx.lineTo(e.offsetX, e.offsetY);
-                ctx.stroke();
-
-                // Record normalized time and intensity
-                let time = ((e.offsetX - 50) / (canvas.width - 100)) * timeScale; // Normalize X
-                let intensity = ((canvas.height - 50 - e.offsetY) / (canvas.height - 100)) * intensityScale; // Normalize Y
-                if (time >= 0 && time <= timeScale && intensity >= 0 && intensity <= intensityScale) {
-                    dataPoints.push({ time: time.toFixed(2), intensity: intensity.toFixed(2) });
-                }
-            }
-        });
-
-        canvas.addEventListener("mouseup", () => {
-            isDrawing = false; // Stop drawing
-        });
-
-        canvas.addEventListener("mouseleave", () => {
-            isDrawing = false; // Stop drawing if mouse leaves canvas
-        });
-
-        // Clear the canvas and reset data points
-        document.getElementById("clearCanvas").addEventListener("click", () => {
-            drawAxes(); // Redraw axes
-            dataPoints = []; // Reset points
-        });
-
-        // Submit the trajectory data
-        document.getElementById("submitCanvas").addEventListener("click", () => {
-            const dataString = JSON.stringify(dataPoints);
-
-            // Save to Firebase
-            db.collection("emotion_trajectories").add({
-                trajectory: dataPoints,
-                timestamp: new Date()
-            })
-            .then(() => {
-                alert("Your data has been saved!");
-                drawAxes(); // Reset canvas
-                dataPoints = []; // Clear data points
-            })
-            .catch((error) => {
-                console.error("Error saving data:", error);
-                alert("There was an error saving your data. Please try again.");
-            });
-        });
-    </script>
-</body>
-</html>
+});
