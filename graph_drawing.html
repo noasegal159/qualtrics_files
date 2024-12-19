@@ -1,33 +1,109 @@
-document.getElementById("submitCanvas").addEventListener("click", () => {
-    // Prepare the data
-    const trajectoryData = {
-        participantID: prompt("Enter your Participant ID:", "001"), // Ask for participant ID
-        time: dataPoints.map((p) => p.time), // Extract time from drawn data
-        intensity: dataPoints.map((p) => p.intensity) // Extract intensity from drawn data
-    };
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emotion Trajectory Tool</title>
+    <script>
+        let canvas, ctx, dataPoints = [], isDrawing = false;
 
-    // Replace with your actual API Gateway Invoke URL
-    const apiGatewayUrl = "https://tnzaxwxu6a.execute-api.us-east-2.amazonaws.com/submitData";
-
-    // Send data to the backend via POST request
-    fetch(apiGatewayUrl, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify(trajectoryData)
-    })
-        .then((response) => response.json())
-        .then((data) => {
-            alert("Data submitted successfully!");
-            console.log("Response from server:", data);
-
-            // Optionally clear the canvas after submission
+        function initCanvas() {
+            canvas = document.getElementById("emotionCanvas");
+            ctx = canvas.getContext("2d");
+            canvas.addEventListener("mousedown", startDrawing);
+            canvas.addEventListener("mousemove", draw);
+            canvas.addEventListener("mouseup", stopDrawing);
+            canvas.addEventListener("mouseout", stopDrawing);
             drawAxes();
-            dataPoints.length = 0; // Clear the collected points
-        })
-        .catch((error) => {
-            console.error("Error:", error);
-            alert("There was an error submitting your data.");
+        }
+
+        function drawAxes() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.beginPath();
+            ctx.moveTo(50, 10);
+            ctx.lineTo(50, 390);
+            ctx.lineTo(790, 390);
+            ctx.stroke();
+            for (let i = 0; i <= 6; i++) {
+                ctx.fillText(i * 10, 50 + i * 120, 410);
+            }
+            for (let i = 0; i <= 9; i++) {
+                ctx.fillText(i, 30, 390 - i * 40);
+            }
+        }
+
+        function startDrawing(e) {
+            isDrawing = true;
+            const { x, y } = getMousePosition(e);
+            dataPoints.push({ time: x, intensity: y });
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            const { x, y } = getMousePosition(e);
+            dataPoints.push({ time: x, intensity: y });
+            ctx.lineTo(x, y);
+            ctx.stroke();
+        }
+
+        function stopDrawing() {
+            if (!isDrawing) return;
+            isDrawing = false;
+            ctx.closePath();
+        }
+
+        function getMousePosition(e) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: Math.round((e.clientX - rect.left) * (60 / 740)),
+                y: Math.round((rect.bottom - e.clientY) * (9 / 380))
+            };
+        }
+
+        document.getElementById("submitCanvas").addEventListener("click", () => {
+            const trajectoryData = {
+                participantID: prompt("Enter your Participant ID:", "001"),
+                time: dataPoints.map((p) => p.time),
+                intensity: dataPoints.map((p) => p.intensity)
+            };
+
+            const apiGatewayUrl = "https://tnzaxwxu6a.execute-api.us-east-2.amazonaws.com/submitData";
+
+            fetch(apiGatewayUrl, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(trajectoryData)
+            })
+                .then((response) => response.json())
+                .then((data) => {
+                    alert("Data submitted successfully!");
+                    drawAxes();
+                    dataPoints.length = 0;
+                })
+                .catch((error) => {
+                    console.error("Error:", error);
+                    alert("There was an error submitting your data.");
+                });
         });
-});
+
+        document.getElementById("clearCanvas").addEventListener("click", () => {
+            drawAxes();
+            dataPoints.length = 0;
+        });
+
+        window.onload = initCanvas;
+    </script>
+</head>
+<body>
+    <div style="text-align: center;">
+        <canvas id="emotionCanvas" width="800" height="400" style="border:1px solid #000;"></canvas>
+        <br>
+        <button id="clearCanvas" type="button">Clear</button>
+        <button id="submitCanvas" type="button">Submit</button>
+    </div>
+</body>
+</html>
